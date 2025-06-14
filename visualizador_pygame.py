@@ -13,7 +13,7 @@ CORES = {
 }
 
 def cor_por_valor(valor):
-    CORES.get(valor, (100, 100, 100)) 
+    return CORES.get(valor, (100, 100, 100)) 
 
 def viewer(linhas, colunas, shm):
     tabuleiro_shm = np.ndarray((linhas, colunas), dtype=np.int8, buffer=shm.buf)
