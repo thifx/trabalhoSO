@@ -1,10 +1,12 @@
 from multiprocessing import shared_memory, Process
 import numpy as np
+from multiprocessing import Lock, shared_memory
 from auxiliar import spawn_valores_aleatorios
 from visualizador_pygame import viewer
 from robot import Robot
 from random import randint
 
+#Configurações do jogo
 linhas, colunas = 40, 20
 
 def create_grid():
