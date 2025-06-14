@@ -1,6 +1,6 @@
 import pygame
 import numpy as np
-from multiprocessing import shared_memory, Lock
+from multiprocessing import shared_memory
 import time
 
 linhas, colunas = 40, 20
@@ -23,7 +23,6 @@ def cor_por_valor(valor):
     return (100, 100, 100)      # valor desconhecido - cinza
 
 def main():
-    #acessando o tabuleiro que existe na memória compartilhada
     shm = shared_memory.SharedMemory(name='tabuleiro', create=False)
     tabuleiro_shm = np.ndarray((linhas, colunas), dtype=np.int8, buffer=shm.buf)
 
@@ -39,7 +38,6 @@ def main():
             if event.type == pygame.QUIT:
                 rodando = False
 
-        # Atualiza o desenho do tabuleiro
         screen.fill((200, 200, 200))
         for i in range(linhas):
             for j in range(colunas):
@@ -48,16 +46,6 @@ def main():
                 pygame.draw.rect(screen, cor,
                     (j * largura_bloco, i * altura_bloco, largura_bloco, altura_bloco))
         
-        # Atualiza o desenho do tabuleiro
-        screen.fill((200, 200, 200))
-        for i in range(linhas):
-            for j in range(colunas):
-                valor = tabuleiro_shm[i, j]
-                cor = cor_por_valor(valor)
-                pygame.draw.rect(screen, cor,
-                    (j * largura_bloco, i * altura_bloco, largura_bloco, altura_bloco))
-        
-        # Desenha as linhas da grade por cima dos blocos
         for i in range(linhas + 1):
             pygame.draw.line(screen, (0, 0, 0), (0, i * altura_bloco), (colunas * largura_bloco, i * altura_bloco))
         for j in range(colunas + 1):
