@@ -1,10 +1,13 @@
-from multiprocessing import Lock, shared_memory
 import numpy as np
+from multiprocessing import Lock, shared_memory
 from auxiliar import spawn_valores_aleatorios
 from visualizador_pygame import viewer
 
+#Configurações do jogo
 linhas, colunas = 40, 20
-Lock = Lock()
+
+#Inicialização dos mutexes
+
 
 def create_grid():
 
