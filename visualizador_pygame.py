@@ -1,6 +1,5 @@
 import pygame
 import numpy as np
-from multiprocessing import shared_memory
 
 largura_bloco = 20
 altura_bloco = 20
@@ -14,9 +13,7 @@ CORES = {
 }
 
 def cor_por_valor(valor):
-    if valor in CORES:
-        return CORES[valor]
-    return (100, 100, 100)      # valor desconhecido - cinza
+    CORES.get(valor, (100, 100, 100)) 
 
 def viewer(linhas, colunas, shm):
     tabuleiro_shm = np.ndarray((linhas, colunas), dtype=np.int8, buffer=shm.buf)
@@ -30,7 +27,9 @@ def viewer(linhas, colunas, shm):
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                rodando = False
+                pygame.quit()
+                shm.close()
+                break
 
         screen.fill((200, 200, 200))
         for i in range(linhas):
@@ -47,5 +46,4 @@ def viewer(linhas, colunas, shm):
 
         pygame.display.flip()
         clock.tick(10)
-    pygame.quit()
-    shm.close()
+    
