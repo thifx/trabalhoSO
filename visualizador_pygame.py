@@ -28,6 +28,7 @@ def viewer(linhas, colunas, shm):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 rodando = False
+        # Checa shm se flag game_over === True
 
         screen.fill((200, 200, 200))
         for i in range(linhas):
