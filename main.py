@@ -30,6 +30,6 @@ if __name__ == "__main__":
     shm = create_grid()
     try:
         viewer(linhas, colunas, shm)
-    finally:
+    except KeyboardInterrupt:
         shm.close()
         shm.unlink()

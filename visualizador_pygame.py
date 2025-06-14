@@ -23,13 +23,11 @@ def viewer(linhas, colunas, shm):
     pygame.display.set_caption("Visualização do Tabuleiro")
 
     clock = pygame.time.Clock()
-
-    while True:
+    rodando = True
+    while rodando:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit()
-                shm.close()
-                break
+                rodando = False
 
         screen.fill((200, 200, 200))
         for i in range(linhas):
@@ -46,4 +44,5 @@ def viewer(linhas, colunas, shm):
 
         pygame.display.flip()
         clock.tick(10)
+    pygame.quit()
     
