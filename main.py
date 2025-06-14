@@ -12,7 +12,6 @@
 # )
 # #Grid
 
-
 from multiprocessing import Lock, shared_memory
 import numpy as np
 from auxiliar import spawn_valores_aleatorios
