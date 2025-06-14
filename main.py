@@ -15,7 +15,7 @@ def iniciar_robo_jogador(shm, linhas, colunas, robos_array, grid_mutex, baterias
     grid_mutex.release()
     
     robos_array.append(robo_jogador) # Adiciona o robô ao array compartilhado
-    robo_jogador.controlador_robo(shm, linhas, colunas) # Inicia o controlador do robô jogador
+    robo_jogador.controlador_robo(shm, linhas, colunas, grid_mutex, baterias_dict_mutex) # Inicia o controlador do robô jogador
     
 #Configurações do jogo
 linhas, colunas = 40, 20
@@ -53,10 +53,13 @@ if __name__ == "__main__":
     grid_mutex = manager.Lock()
     baterias_dict_mutex,robos_dict_mutex = inicializar_locks(manager, posicoes_baterias, robos_array)
     try:
-        viewer(linhas, colunas, shm)
-        # Inicia o robô jogador
+        viwer_process = Process(target=viewer, args=(linhas, colunas, shm))
+        viwer_process.start()
+        
         robo_jogador = Process(target=iniciar_robo_jogador, args=(shm, linhas, colunas, robos_array, grid_mutex, baterias_dict_mutex, robos_dict_mutex))
         robo_jogador.start()
+        
+        viwer_process.join()
         robo_jogador.join()
     except KeyboardInterrupt:
         shm.close()

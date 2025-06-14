@@ -43,6 +43,6 @@ def viewer(linhas, colunas, shm):
             pygame.draw.line(screen, (0, 0, 0), (j * largura_bloco, 0), (j * largura_bloco, linhas * altura_bloco))
 
         pygame.display.flip()
-        clock.tick(10)
+        clock.tick(30)
     pygame.quit()
     
