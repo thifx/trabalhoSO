@@ -1,9 +1,7 @@
 import pygame
 import numpy as np
 from multiprocessing import shared_memory
-import time
 
-linhas, colunas = 40, 20
 largura_bloco = 20
 altura_bloco = 20
 
@@ -11,19 +9,16 @@ CORES = {
     0: (255, 255, 255),  # livre - branco
     1: (0, 0, 0),        # barreira - preto
     2: (255, 255, 0),    # bateria - amarelo
+    99: (0, 255, 0),      # robô jogador - verde
+    10: (255, 0, 0),     # robô comum - vermelho
 }
 
 def cor_por_valor(valor):
     if valor in CORES:
         return CORES[valor]
-    elif valor == 99:
-        return (0, 255, 0)      # robô jogador - verde
-    elif valor >= 10:
-        return (255, 0, 0)      # outros robôs - vermelho
     return (100, 100, 100)      # valor desconhecido - cinza
 
-def main():
-    shm = shared_memory.SharedMemory(name='tabuleiro', create=False)
+def viewer(linhas, colunas, shm):
     tabuleiro_shm = np.ndarray((linhas, colunas), dtype=np.int8, buffer=shm.buf)
 
     pygame.init()
@@ -31,9 +26,8 @@ def main():
     pygame.display.set_caption("Visualização do Tabuleiro")
 
     clock = pygame.time.Clock()
-    rodando = True
 
-    while rodando:
+    while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 rodando = False
@@ -55,6 +49,3 @@ def main():
         clock.tick(10)
     pygame.quit()
     shm.close()
-
-if __name__ == "__main__":
-    main()
