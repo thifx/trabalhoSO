@@ -1,2 +1,21 @@
+# Ignora arquivos de cache do Python
 __pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Ignora arquivos de log e dumps
+*.log
+*.out
+*.pid
+
+# Ignora o ambiente virtual
 venv/
+.venv/
+
+# Ignora configurações locais do VS Code
+.vscode/
+
+# Ignora arquivos de ambiente
+.env
+.env.*
