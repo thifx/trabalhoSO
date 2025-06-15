@@ -1,6 +1,7 @@
 import numpy as np
 import logging
 
+#Logger configs
 logger = logging.getLogger("game_logger")
 logger.setLevel(logging.DEBUG)
 if not logger.hasHandlers():
@@ -11,10 +12,11 @@ if not logger.hasHandlers():
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
-tabuleiro_linhas, tabuleiro_colunas = 40, 20
-tabuleiro = np.zeros((tabuleiro_linhas,tabuleiro_colunas), dtype=np.int8)
-tabuleiro_dtype = np.int8
+#Global variables used in the game
+linhas, colunas = 40, 20
 num_robots = 4
+tabuleiro_dtype = np.int8
+tabuleiro = np.zeros((linhas,colunas), dtype=tabuleiro_dtype)
 robot_dtype = np.dtype([
         ('id', np.int32),
         ('strength', np.int32),
