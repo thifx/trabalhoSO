@@ -23,7 +23,7 @@ robot_dtype = np.dtype([
         ('type', np.int8)
     ])
 
-def viewer(linhas, colunas, grid_shm, robots_shm):
+def viewer(linhas, colunas, grid_shm, robots_shm,grid_mutex):
     pygame.init()
     screen = pygame.display.set_mode((colunas * largura_bloco, linhas * altura_bloco))
     pygame.display.set_caption("Visualização do Tabuleiro")
@@ -49,11 +49,12 @@ def viewer(linhas, colunas, grid_shm, robots_shm):
                 elif event.key == pygame.K_RIGHT:
                     novo_x = min(colunas - 1, x + 1)
                 if tabuleiro_shm[novo_y, novo_x] != 1:
-                    tabuleiro_shm[y, x] = 0
-                    tabuleiro_shm[novo_y, novo_x] = 99
-                    player['pos'][0] = novo_y
-                    player['pos'][1] = novo_x
-                    print(f"Moved to ({novo_x}, {novo_y})")
+                    with grid_mutex:    
+                        tabuleiro_shm[y, x] = 0
+                        tabuleiro_shm[novo_y, novo_x] = 99
+                        player['pos'][0] = novo_y
+                        player['pos'][1] = novo_x
+                        print(f"Moved to ({novo_x}, {novo_y})")
             # Checa shm se flag game_over === True
 
         screen.fill((200, 200, 200))

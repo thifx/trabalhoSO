@@ -1,11 +1,11 @@
 from multiprocessing import shared_memory, Process, Value
-import numpy as np
 from multiprocessing import shared_memory, Process, Manager
 from multiprocessing import Lock, shared_memory
 from auxiliar import spawn_valores_aleatorios,inicializar_locks
 from visualizador_pygame import viewer
 from robot import Robot
 from random import randint
+import numpy as np
 import time
 
 #Configurações globais
@@ -76,10 +76,9 @@ def spawn_robots(num_robots=4):
 if __name__ == "__main__": 
     grid_shm = create_grid()
     robots_shm = spawn_robots()
-    baterias_dict_mutex,robos_dict_mutex = inicializar_locks(manager,robots_shm,grid_shm)
-    
+    baterias_dict_mutex  = inicializar_locks(manager,grid_shm)
     try:
-        viewer(linhas, colunas, grid_shm, robots_shm)
+        viewer(linhas, colunas, grid_shm, robots_shm, grid_mutex)
     except KeyboardInterrupt:
         pass
     finally:
