@@ -1,4 +1,7 @@
 from multiprocessing import shared_memory
+from auxiliar import verificar_posicao_valida
+from global_configs import tabuleiro_linhas, tabuleiro_colunas, tabuleiro_dtype, num_robots
+import random
 import os
 import threading
 import numpy as np
@@ -58,29 +61,30 @@ class Robot:
         pass
 
     def housekeeping(self):
-        while self.status != "morto" and self.game_over_flag.value == 0:
-            time.sleep(2)
+        while self.status != 0 and self.game_over_flag.value == 0:
+            time.sleep(0.2)
 
             self.robots_mutex.acquire()
             try:
-                self.energy = max(0, self.energy - 1)
-                print(f"[HK] Robô {self.robot_id}: energia {self.energy}")
-
-                if self.energy == 0:
-                    self.status = "morto"
+                energia = self.robots[self.idx]['energy']
+                energia = max(0, energia - 1)
+                self.robots[self.idx]['energy'] = energia
+                if energia == 0:
+                    self.robots[self.idx]['status'] = 0
                     print(f"[HK] Robô {self.robot_id} morreu por falta de energia")
 
-                self.robots[self.idx]['energy'] = self.energy
-                self.robots[self.idx]['status'] = 0 if self.status == "morto" else 1
-            finally:
-                self.robots_mutex.release()
+                else:
+                    self.robots[self.idx]['status'] = 1
+                status_array = self.robots['status']
+                vivos = np.sum(status_array == 1)
+                print(f"[HK] Robô {self.robot_id}: energia {energia}, robôs vivos: {vivos}")
 
-            self.robots_mutex.acquire()
-            try:
-                vivos = np.sum(self.robots['status'] == 1)
-                if vivos == 1:
-                    print(f"[HK] Robô {self.robot_id} detectou o fim do jogo.")
+                if vivos == 1 and self.robots[self.idx]['status'] == 1:
+                    print(f"[HK] Robô {self.robot_id} é o vencedor! Fim do jogo.")
                     self.game_over_flag.value = 1
+                    return
+                
+                if self.robots[self.idx]['status'] == 0 or self.game_over_flag.value == 1:
                     return
             finally:
                 self.robots_mutex.release()
