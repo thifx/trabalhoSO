@@ -1,5 +1,5 @@
 from multiprocessing import shared_memory
-from global_configs import robot_dtype,tabuleiro_linhas, tabuleiro_colunas,tabuleiro_dtype
+from global_configs import robot_dtype,tabuleiro_linhas, tabuleiro_colunas,tabuleiro_dtype,logger
 import os
 import threading
 import numpy as np
@@ -34,6 +34,7 @@ class Robot:
         self.type = robot['type']
 
         print(f"Robot {self.robot_id} of type {self.type} started with strength {self.strength}, energy {self.energy}, speed {self.speed}, status {self.status}, position {self.pos}")
+        logger
 
         thread1 = threading.Thread(target=self.sense_act, name="sense_act")
         thread2 = threading.Thread(target=self.housekeeping, name="housekeeping")
@@ -60,15 +61,18 @@ class Robot:
                 if energia == 0:
                     self.robots[self.idx]['status'] = 0
                     print(f"[HK] Robô {self.robot_id} morreu por falta de energia")
+                    logger.info(f"Robô {self.robot_id} morreu por falta de energia")
 
                 else:
                     self.robots[self.idx]['status'] = 1
                 status_array = self.robots['status']
                 vivos = np.sum(status_array == 1)
                 print(f"[HK] Robô {self.robot_id}: energia {energia}, robôs vivos: {vivos}")
+                logger.info(f"Robô {self.robot_id}: energia {energia}, robôs vivos: {vivos}")
 
                 if vivos == 1 and self.robots[self.idx]['status'] == 1:
                     print(f"[HK] Robô {self.robot_id} é o vencedor! Fim do jogo.")
+                    logger.info(f"Robô {self.robot_id}: energia {energia}, robôs vivos: {vivos}")
                     self.game_over_flag.value = 1
                     return
                 

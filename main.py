@@ -69,6 +69,7 @@ if __name__ == "__main__":
     robots_shm = spawn_robots()
     baterias_dict_mutex  = inicializar_locks(manager,grid_shm)
     try:
+        logger.info("O jogo está inicialziando")
         viewer(linhas, colunas, grid_shm, robots_shm, grid_mutex)
     except KeyboardInterrupt:
         pass
@@ -80,3 +81,4 @@ if __name__ == "__main__":
 
         for p in processos:
             p.terminate()
+        logger.info("O jogo finalizou")

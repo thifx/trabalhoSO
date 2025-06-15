@@ -1,4 +1,5 @@
 from multiprocessing import shared_memory
+from global_configs import logger
 import pygame
 import numpy as np
 
