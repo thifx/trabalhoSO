@@ -1,27 +1,20 @@
+import math
 from multiprocessing import shared_memory
 import os
 import threading
 import numpy as np
 import time
-
-robot_dtype = np.dtype([
-    ('id', np.int32),
-    ('strength', np.int32),
-    ('energy', np.int32),
-    ('speed', np.int32),
-    ('pos', np.int32, (2,)),
-    ('status', np.int8),
-    ('type', np.int8)
-])
+from global_configs import tabuleiro_dtype, robot_dtype, linhas, colunas
 
 class Robot:
-    def __init__(self, idx, shm_name_robots, shm_name_grid, linhas, colunas, robots_mutex, game_over_flag):
+    def __init__(self, idx, shm_name_robots, shm_name_grid, robots_mutex, grid_mutex, baterias_dict_mutex, game_over_flag):
         self.idx = idx
-        self.linhas = linhas
-        self.colunas = colunas
 
         self.game_over_flag = game_over_flag
+        
         self.robots_mutex = robots_mutex
+        self.grid_mutex = grid_mutex
+        self.baterias_dict_mutex = baterias_dict_mutex
 
         self.shm_robots = shared_memory.SharedMemory(name=shm_name_robots)
         self.shm_grid = shared_memory.SharedMemory(name=shm_name_grid)
@@ -53,12 +46,164 @@ class Robot:
         thread1.join()
         thread2.join()
 
+    def collect_battery(self):
+        self.robots_mutex.acquire()
+        try:
+            if self.energy < 100:
+                self.energy = min(100, self.energy + 20)
+                self.robots[self.idx]['energy'] = self.energy
+            if self.pos in self.baterias_dict_mutex:
+                self.baterias_dict_mutex.pop(self.pos, None)
+        finally:
+            self.robots_mutex.release()
+        
+        grid = np.ndarray((linhas, colunas), dtype=tabuleiro_dtype, buffer=self.shm_grid.buf)
+        self.grid_mutex.acquire()
+        try:
+            x, y = self.pos
+            if grid[x, y] == 2:
+                grid[x, y] = 10
+        finally:
+            self.grid_mutex.release()
+
+
+    def fight(self):
+        robot_list = self.robots
+        for robot in robot_list:
+            if tuple(robot['pos']) == self.pos and robot['id'] != self.id:
+                power_1 = 2 * self.strength + self.energy
+                power_2 = 2 * robot['strength'] + robot['energy']
+                if power_1 == power_2:
+                    self.status = 0
+                    robot['status'] = 0
+
+                    grid = np.ndarray((linhas, colunas), dtype=tabuleiro_dtype, buffer=self.shm_grid.buf)
+                    self.grid_mutex.acquire()
+                    try:
+                        x, y = self.pos
+                        grid[x, y] = 0
+                    finally:
+                        self.grid_mutex.release()
+
+                elif power_1 > power_2:
+                    robot['status'] = 0
+
+                    grid = np.ndarray((linhas, colunas), dtype=tabuleiro_dtype, buffer=self.shm_grid.buf)
+                    self.grid_mutex.acquire()
+                    try:
+                        x, y = robot['pos']
+                        grid[x, y] = 0
+                    finally:
+                        self.grid_mutex.release()
+                
+                else:
+                    self.status = 0
+
+                    grid = np.ndarray((linhas, colunas), dtype=tabuleiro_dtype, buffer=self.shm_grid.buf)
+                    self.grid_mutex.acquire()
+                    try:
+                        x, y = self.pos
+                        grid[x, y] = 0
+                    finally:
+                        self.grid_mutex.release()
+                break
+
+    def move(self, pos_x, pos_y):
+        print(f"[MOVE] Robô {self.robot_id} tentando mover para ({pos_x}, {pos_y})")
+        grid = np.ndarray((linhas, colunas), dtype=tabuleiro_dtype, buffer=self.shm_grid.buf)
+
+        my_x, my_y = self.pos 
+        print(f"[MOVE] Robô {self.robot_id} posição atual: ({my_x}, {my_y})")
+        dx = pos_x - my_x
+        dy = pos_y - my_y
+        step_x = int(np.sign(dx))
+        step_y = int(np.sign(dy))
+        new_x = my_x + step_x
+        new_y = my_y + step_y
+
+        target = self.valid_move(new_x, new_y, grid)
+        if target is not None:
+            try:
+                self.grid_mutex.acquire()
+                grid[my_x, my_y] = 0
+                grid[new_x, new_y] = 99
+                print(f"[MOVE] Robô {self.robot_id} movendo de ({my_x}, {my_y}) para ({new_x}, {new_y})")
+                print(grid)
+                self.pos = (new_x, new_y)
+            except Exception as e:
+                print(f"[MOVE] Erro ao mover robô {self.robot_id}: {e}")
+            finally:
+                self.grid_mutex.release()
+            if target == 2:
+                key = f"{new_x}{new_y}"
+                mutex = self.baterias_dict_mutex.get((key), None)
+                if mutex:
+                    mutex.acquire()
+                    try:
+                        self.collect_battery()
+                    finally:
+                        mutex.release()
+            elif target == 10 or target == 99:
+                try:
+                    self.robots_mutex.acquire()
+                    self.fight()
+                finally:
+                    self.robots_mutex.release()
+
+
+    def valid_move(self, pos_x, pos_y, grid):
+
+        if pos_x < 0 or pos_x >= linhas or pos_y < 0 or pos_y >= colunas:
+            return None
+    
+        valor_do_tabuleiro = grid[pos_x, pos_y]
+        if valor_do_tabuleiro == 1:
+            return None
+        return valor_do_tabuleiro
+
+    def distance(self, x1, y1, x2, y2):
+        return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+    
     def sense_act(self):
-        # Implementação do thread sense_act
-        pass
+        while self.status != 0 and self.game_over_flag.value == 0:
+            local_grid = self.grid.copy()
+
+            battery_pos = np.argwhere(local_grid == 2)
+            enemy_pos = [tuple(pos) for pos in np.argwhere(local_grid == 10) if tuple(pos) != self.pos]
+            my_pos = self.pos
+
+            minor_e_dist = 1000000.0
+            enemy_selected = (0, 0)
+
+            minor_b_dist = 1000000.0
+            battery_selected = (0, 0)
+
+            for enemy in enemy_pos:
+                distance = self.distance(my_pos[0], my_pos[1], enemy[0], enemy[1])
+                if distance < minor_e_dist:
+                    minor_e_dist = distance
+                    enemy_selected = (enemy[0], enemy[1])
+        
+            for battery in battery_pos:
+                distance = self.distance(my_pos[0], my_pos[1], battery[0], battery[1])
+                if distance < minor_b_dist:
+                    minor_b_dist = distance
+                    battery_selected = (battery[0], battery[1])
+            if self.energy < 80:
+                self.grid_mutex.acquire()
+                self.move(battery_selected[0], battery_selected[1])
+                self.grid_mutex.release()
+        
+            # else:
+            #     self.grid_mutex.acquire()
+            #     if minor_e_dist < minor_b_dist:
+            #         self.move(enemy_selected[0], enemy_selected[1])
+            #     else:
+            #         self.move(battery_selected[0], battery_selected[1])
+            #     self.grid_mutex.release()
 
     def housekeeping(self):
-        while self.status != "morto" and self.game_over_flag.value == 0:
+        while self.status != 0 and self.game_over_flag.value == 0:
             time.sleep(2)
 
             self.robots_mutex.acquire()

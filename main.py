@@ -6,25 +6,13 @@ from visualizador_pygame import viewer
 from robot import Robot
 from random import randint
 import numpy as np
-import time
-
+from global_configs import tabuleiro, linhas, colunas, robot_dtype
 #Configurações globais
 processos = []
-linhas, colunas = 40, 20
-tabuleiro = np.zeros((linhas, colunas), dtype=np.int8)
-robot_dtype = np.dtype([
-        ('id', np.int32),
-        ('strength', np.int32),
-        ('energy', np.int32),
-        ('speed', np.int32),
-        ('pos', np.int32, (2,)),
-        ('status', np.int8),
-        ('type', np.int8)
-])
 
 #Mutexes e variaveis compartilhadas
 manager = Manager()
-baterias_dict_mutex,robos_dict_mutex = manager.dict(), manager.dict()
+baterias_dict_mutex, robos_dict_mutex = manager.dict(), manager.dict()
 grid_mutex = Lock()
 robots_mutex = Lock()
 game_over_flag = Value('i', 0)
@@ -67,19 +55,20 @@ def spawn_robots(num_robots=4):
         robots[i]['type'] = tipo
         robots[i]['pos'] = pos
         if tipo != 99:
-            p = Process(target=Robot(i, "robots", "tabuleiro", linhas, colunas, robots_mutex, game_over_flag))
+            p = Process(target=Robot(i, "robots", "tabuleiro", robots_mutex, grid_mutex, baterias_dict_mutex, game_over_flag))
             p.start()
             processos.append(p)
 
     return robots_shm
 
 if __name__ == "__main__": 
-    grid_shm = create_grid()
-    robots_shm = spawn_robots()
-    baterias_dict_mutex  = inicializar_locks(manager,grid_shm)
+   
     try:
+        grid_shm = create_grid()
+        robots_shm = spawn_robots()
+        baterias_dict_mutex  = inicializar_locks(manager,grid_shm)
         viewer(linhas, colunas, grid_shm, robots_shm, grid_mutex)
-    except KeyboardInterrupt:
+    except Exception as e:
         pass
     finally:
         grid_shm.close()
