@@ -36,11 +36,10 @@ def viewer(linhas, colunas, grid_shm, robots_shm):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 rodando = False
+            player = [x for x in robots if x['type'] == 99][0]
             if event.type == pygame.KEYDOWN:
-                print(robots)
-                player = [x for x in robots if x['type'] == 99][0]
-                x, y = player['pos'][0], player['pos'][1]
-                novo_x, novo_y = x, y
+                x, y = player['pos'][1], player['pos'][0]
+                novo_y, novo_x = y, x
                 if event.key == pygame.K_UP:
                     novo_y = max(0, y - 1)
                 elif event.key == pygame.K_DOWN:
@@ -49,12 +48,11 @@ def viewer(linhas, colunas, grid_shm, robots_shm):
                     novo_x = max(0, x - 1)
                 elif event.key == pygame.K_RIGHT:
                     novo_x = min(colunas - 1, x + 1)
-                print(player)
                 if tabuleiro_shm[novo_y, novo_x] != 1:
-                    tabuleiro_shm[y, x] = 0       
+                    tabuleiro_shm[y, x] = 0
                     tabuleiro_shm[novo_y, novo_x] = 99
-                    player['pos'][0] = novo_x
-                    player['pos'][1] = novo_y
+                    player['pos'][0] = novo_y
+                    player['pos'][1] = novo_x
                     print(f"Moved to ({novo_x}, {novo_y})")
             # Checa shm se flag game_over === True
 
