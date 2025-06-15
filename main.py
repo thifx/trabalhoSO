@@ -8,7 +8,9 @@ from robot import Robot
 from random import randint
 import time
 
+processos = []
 linhas, colunas = 40, 20
+tabuleiro = np.zeros((linhas, colunas), dtype=np.int8)
 
 grid_mutex = Lock()
 robots_mutex = Lock()
@@ -21,58 +23,66 @@ robot_dtype = np.dtype([
         ('energy', np.int32),
         ('speed', np.int32),
         ('pos', np.int32, (2,)),
-        ('status', np.int8)
-    ])
+        ('status', np.int8),
+        ('type', np.int8)
+])
 
 def create_grid(num_robots=4):
-
-    tabuleiro = np.zeros((linhas, colunas), dtype=np.int8)
-
-    spawn_valores_aleatorios(tabuleiro, 80, 1) # Gera 80 barreiras
+    grid_shm = shared_memory.SharedMemory(name="tabuleiro", create=True, size=tabuleiro.nbytes)
+    tabuleiro_shm = np.ndarray(tabuleiro.shape, dtype=tabuleiro.dtype, buffer=grid_shm.buf)
+    spawn_valores_aleatorios(tabuleiro, 80, 1) # Gera 80 barreiras 
     global posicoes_baterias 
     posicoes_baterias = spawn_valores_aleatorios(tabuleiro, 40, 2) # Gera 40 energias
     spawn_valores_aleatorios(tabuleiro, num_robots - 1, 10) # Gera n - 1 robôs
-    spawn_valores_aleatorios(tabuleiro, 1, 99) # Gera o robô principal 
-
-    shm = shared_memory.SharedMemory(name="tabuleiro", create=True, size=tabuleiro.nbytes)
-    tabuleiro_shm = np.ndarray(tabuleiro.shape, dtype=tabuleiro.dtype, buffer=shm.buf)
+    spawn_valores_aleatorios(tabuleiro, 1, 99) # Gera o robô principal
     tabuleiro_shm[:] = tabuleiro[:]
-    return shm
+    return grid_shm
 
-def spawn_robots(num_robots):
+def spawn_robots(num_robots=4):
+    grid_shm = shared_memory.SharedMemory(name="tabuleiro")
+    tabuleiro_shm = np.ndarray((linhas, colunas), dtype=tabuleiro.dtype, buffer=grid_shm.buf)
+    print(np.where(tabuleiro_shm == 99))
     robots_shm = shared_memory.SharedMemory(name="robots", create=True, size=robot_dtype.itemsize * num_robots)
     robots = np.ndarray((num_robots,), dtype=robot_dtype, buffer=robots_shm.buf)
-
-
-    processes = []
+    
+    posicoes_99 = np.argwhere(tabuleiro_shm == 99)
+    posicoes_10 = np.argwhere(tabuleiro_shm == 10)
 
     for i in range(num_robots):
         strength = randint(1, 10)
         energy = randint(10, 100)
         speed = randint(1, 5)
-        pos = (randint(0, linhas - 1), randint(0, colunas - 1))
+        status = 1
+        tipo = 99 if i == 0 else 10
+        if tipo == 99:
+            pos = posicoes_99[0]
+        else:
+            pos = posicoes_10[i - 1]
+            
+        robots[i]['id'] = i
+        robots[i]['strength'] = strength
+        robots[i]['energy'] = energy
+        robots[i]['speed'] = speed
+        robots[i]['status'] = status
+        robots[i]['type'] = tipo
+        robots[i]['pos'] = pos
+        if tipo != 99:
+            p = Process(target=Robot(i, "robots", "tabuleiro", linhas, colunas, robots_mutex, game_over_flag))
+            p.start()
+            processos.append(p)
 
-        robots[i] = (i, strength, energy, speed, pos, 1)
-
-        p = Process(target=Robot(strength, energy, speed, "vivo", i, "robots", robots_mutex, game_over_flag))
-        p.start()
-        processes.append(p)
-
-    return robots_shm, processes
+    return robots_shm
 
 if __name__ == "__main__":
     posicoes_baterias = []
     manager = Manager() 
     grid_shm = create_grid()
-    robots_shm, processos = spawn_robots(4)
+    robots_shm = spawn_robots()
     baterias_dict_mutex,robos_dict_mutex = inicializar_locks(manager, posicoes_baterias, robots_shm,num_robots=4)
     try:
-        viewer(linhas, colunas, grid_shm)
-
-        while game_over_flag.value == 0:
-            time.sleep(1)
+        viewer(linhas, colunas, grid_shm, robots_shm)
     except KeyboardInterrupt:
-        print("Encerrando o jogo manualmente")
+        pass
     finally:
         grid_shm.close()
         grid_shm.unlink()

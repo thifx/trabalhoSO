@@ -1,7 +1,7 @@
+from multiprocessing import shared_memory
 import os
 import threading
 import numpy as np
-from multiprocessing import shared_memory
 import time
 
 robot_dtype = np.dtype([
@@ -10,27 +10,39 @@ robot_dtype = np.dtype([
     ('energy', np.int32),
     ('speed', np.int32),
     ('pos', np.int32, (2,)),
-    ('status', np.int8)
+    ('status', np.int8),
+    ('type', np.int8)
 ])
 
 class Robot:
-    def __init__(self, strength, energy, speed, status, robot_index, shm_name, robots_mutex, game_over_flag):
-        self.strength = strength
-        self.energy = energy
-        self.speed = speed
-        self.status = status
-        self.robot_index = robot_index
-        self.robots_mutex = robots_mutex
-        self.game_over_flag = game_over_flag
+    def __init__(self, idx, shm_name_robots, shm_name_grid, linhas, colunas, robots_mutex, game_over_flag):
+        self.idx = idx
+        self.linhas = linhas
+        self.colunas = colunas
 
-        self.shm = shared_memory.SharedMemory(name=shm_name)
-        self.robots_array = np.ndarray((4,), dtype=robot_dtype, buffer=self.shm.buf)
+        self.game_over_flag = game_over_flag
+        self.robots_mutex = robots_mutex
+
+        self.shm_robots = shared_memory.SharedMemory(name=shm_name_robots)
+        self.shm_grid = shared_memory.SharedMemory(name=shm_name_grid)
+
+        self.robots = np.ndarray((4,), dtype=robot_dtype, buffer=self.shm_robots.buf)
+        self.grid = np.ndarray((linhas, colunas), dtype=np.int8, buffer=self.shm_grid.buf)
+
     def __call__(self):
         self.run()
     
     def run(self):
+        robot = self.robots[self.idx]
         self.robot_id = os.getpid()
-        print(f"Robot {self.robot_id} (idx {self.robot_index}) iniciado.")
+        self.strength = robot['strength']
+        self.energy = robot['energy']
+        self.speed = robot['speed']
+        self.status = robot['status']
+        self.pos = int(robot['pos'][0]), int(robot['pos'][1])
+        self.type = robot['type']
+
+        print(f"Robot {self.robot_id} of type {self.type} started with strength {self.strength}, energy {self.energy}, speed {self.speed}, status {self.status}, position {self.pos}")
 
         thread1 = threading.Thread(target=self.sense_act, name="sense_act")
         thread2 = threading.Thread(target=self.housekeeping, name="housekeeping")
@@ -58,14 +70,14 @@ class Robot:
                     self.status = "morto"
                     print(f"[HK] Robô {self.robot_id} morreu por falta de energia")
 
-                self.robots_array[self.robot_index]['energy'] = self.energy
-                self.robots_array[self.robot_index]['status'] = 0 if self.status == "morto" else 1
+                self.robots[self.idx]['energy'] = self.energy
+                self.robots[self.idx]['status'] = 0 if self.status == "morto" else 1
             finally:
                 self.robots_mutex.release()
 
             self.robots_mutex.acquire()
             try:
-                vivos = np.sum(self.robots_array['status'] == 1)
+                vivos = np.sum(self.robots['status'] == 1)
                 if vivos == 1:
                     print(f"[HK] Robô {self.robot_id} detectou o fim do jogo.")
                     self.game_over_flag.value = 1
