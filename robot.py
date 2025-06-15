@@ -1,24 +1,12 @@
 from multiprocessing import shared_memory
-from auxiliar import verificar_posicao_valida
-from global_configs import tabuleiro_linhas, tabuleiro_colunas, tabuleiro_dtype, num_robots
-import random
+from global_configs import robot_dtype,tabuleiro_linhas, tabuleiro_colunas,tabuleiro_dtype
 import os
 import threading
 import numpy as np
 import time
 
-robot_dtype = np.dtype([
-    ('id', np.int32),
-    ('strength', np.int32),
-    ('energy', np.int32),
-    ('speed', np.int32),
-    ('pos', np.int32, (2,)),
-    ('status', np.int8),
-    ('type', np.int8)
-])
-
 class Robot:
-    def __init__(self, idx, shm_name_robots, shm_name_grid, linhas, colunas, robots_mutex, game_over_flag):
+    def __init__(self, idx, shm_name_robots, shm_name_grid, robots_mutex, game_over_flag, linhas=tabuleiro_linhas, colunas=tabuleiro_colunas):
         self.idx = idx
         self.linhas = linhas
         self.colunas = colunas
@@ -30,7 +18,7 @@ class Robot:
         self.shm_grid = shared_memory.SharedMemory(name=shm_name_grid)
 
         self.robots = np.ndarray((4,), dtype=robot_dtype, buffer=self.shm_robots.buf)
-        self.grid = np.ndarray((linhas, colunas), dtype=np.int8, buffer=self.shm_grid.buf)
+        self.grid = np.ndarray((self.linhas, self.colunas), dtype=tabuleiro_dtype, buffer=self.shm_grid.buf)
 
     def __call__(self):
         self.run()

@@ -28,32 +28,3 @@ def inicializar_locks(manager,grid_shm):
         baterias_dict_mutex[key] = manager.Lock()
 
     return baterias_dict_mutex
-
-def verificar_posicao_valida(posicao,tabuleiro)->bool:
-    linhas = 40
-    colunas = 20
-    pos_x = posicao[0]
-    pos_y = posicao[1]
-    #Verifica se a posicao esta dentro dos limites do tabuleiro
-    if pos_x < 0 or pos_x >= linhas or pos_y < 0 or pos_y >= colunas:
-        return False
-    
-    valor_do_tabuleiro = tabuleiro[pos_x, pos_y]
-    #Verifica se o valor do tabuleiro na posicao eh valido
-    if(valor_do_tabuleiro == 0): # Espaco livre
-        return True
-    elif(valor_do_tabuleiro == 1): #Barreira
-        return False
-    else: #Bateria ou robô
-        return True
-    
-def realizar_acao_player(robo,tabuleiro,nova_posicao,baterias_dict_mutex):
-    valor_tabuleiro = tabuleiro[nova_posicao[0], nova_posicao[1]]
-    if valor_tabuleiro == 0:  # Espaço livre
-        tabuleiro[robo.posicao[0], robo.posicao[1]] = 0  # Limpa a posição antiga
-        robo.posicao = nova_posicao
-        tabuleiro[nova_posicao[0], nova_posicao[1]] = robo.id  # Atualiza a nova posição do robô
-    elif valor_tabuleiro == 2:  # Bateria
-        pass  # Implementar lógica de coleta de bateria e organizacao dos mutex
-    elif valor_tabuleiro == 99:  # Robô jogador
-        pass  # Implementar lógica de interação entre robos

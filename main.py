@@ -2,6 +2,7 @@ from multiprocessing import shared_memory, Process, Value
 from multiprocessing import shared_memory, Process, Manager
 from multiprocessing import Lock, shared_memory
 from auxiliar import spawn_valores_aleatorios,inicializar_locks
+from global_configs import *
 from visualizador_pygame import viewer
 from robot import Robot
 from random import randint
@@ -10,17 +11,7 @@ import time
 
 #Configurações globais
 processos = []
-linhas, colunas = 40, 20
-tabuleiro = np.zeros((linhas, colunas), dtype=np.int8)
-robot_dtype = np.dtype([
-        ('id', np.int32),
-        ('strength', np.int32),
-        ('energy', np.int32),
-        ('speed', np.int32),
-        ('pos', np.int32, (2,)),
-        ('status', np.int8),
-        ('type', np.int8)
-])
+linhas, colunas = tabuleiro_linhas, tabuleiro_colunas
 
 #Mutexes e variaveis compartilhadas
 manager = Manager()
@@ -67,7 +58,7 @@ def spawn_robots(num_robots=4):
         robots[i]['type'] = tipo
         robots[i]['pos'] = pos
         if tipo != 99:
-            p = Process(target=Robot(i, "robots", "tabuleiro", linhas, colunas, robots_mutex, game_over_flag))
+            p = Process(target=Robot(i, "robots", "tabuleiro", robots_mutex, game_over_flag))
             p.start()
             processos.append(p)
 
