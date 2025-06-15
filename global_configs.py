@@ -1,6 +1,7 @@
 import numpy as np
 
 tabuleiro_linhas, tabuleiro_colunas = 40, 20
+tabuleiro = np.zeros((tabuleiro_linhas,tabuleiro_colunas), dtype=np.int8)
 tabuleiro_dtype = np.int8
 num_robots = 4
 robot_dtype = np.dtype([
