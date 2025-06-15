@@ -78,7 +78,8 @@ if __name__ == "__main__":
     manager = Manager() 
     grid_shm = create_grid()
     robots_shm = spawn_robots()
-    baterias_dict_mutex,robos_dict_mutex = inicializar_locks(manager, posicoes_baterias, robots_shm,num_robots=4)
+    baterias_dict_mutex,robos_dict_mutex = inicializar_locks(manager,robots_shm,grid_shm,num_robots=4)
+    print(baterias_dict_mutex)
     try:
         viewer(linhas, colunas, grid_shm, robots_shm)
     except KeyboardInterrupt:
