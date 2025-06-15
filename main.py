@@ -1,7 +1,8 @@
 from multiprocessing import shared_memory, Process, Value
 import numpy as np
+from multiprocessing import shared_memory, Process, Manager
 from multiprocessing import Lock, shared_memory
-from auxiliar import spawn_valores_aleatorios
+from auxiliar import spawn_valores_aleatorios,inicializar_locks
 from visualizador_pygame import viewer
 from robot import Robot
 from random import randint
@@ -23,14 +24,15 @@ robot_dtype = np.dtype([
         ('status', np.int8)
     ])
 
-def create_grid():
+def create_grid(num_robots=4):
 
     tabuleiro = np.zeros((linhas, colunas), dtype=np.int8)
 
-    spawn_valores_aleatorios(tabuleiro, 40, 2) 
-    spawn_valores_aleatorios(tabuleiro, 40, 1) 
-    tabuleiro[15, 15] = 10   
-    tabuleiro[20, 10] = 99   
+    spawn_valores_aleatorios(tabuleiro, 80, 1) # Gera 80 barreiras
+    global posicoes_baterias 
+    posicoes_baterias = spawn_valores_aleatorios(tabuleiro, 40, 2) # Gera 40 energias
+    spawn_valores_aleatorios(tabuleiro, num_robots - 1, 10) # Gera n - 1 robôs
+    spawn_valores_aleatorios(tabuleiro, 1, 99) # Gera o robô principal 
 
     shm = shared_memory.SharedMemory(name="tabuleiro", create=True, size=tabuleiro.nbytes)
     tabuleiro_shm = np.ndarray(tabuleiro.shape, dtype=tabuleiro.dtype, buffer=shm.buf)
@@ -59,8 +61,11 @@ def spawn_robots(num_robots):
     return robots_shm, processes
 
 if __name__ == "__main__":
+    posicoes_baterias = []
+    manager = Manager() 
     grid_shm = create_grid()
     robots_shm, processos = spawn_robots(4)
+    baterias_dict_mutex,robos_dict_mutex = inicializar_locks(manager, posicoes_baterias, robots_shm,num_robots=4)
     try:
         viewer(linhas, colunas, grid_shm)
 

@@ -13,12 +13,21 @@ def spawn_valores_aleatorios(tabuleiro: np.ndarray, quantidade: int, valor: int)
     
     return posicoes_geradas
 
-def inicializar_locks(manager, posicoes_baterias, robos_array):
+def inicializar_locks(manager, posicoes_baterias, robos_shm,num_robots):
     """
     Os mutexes são usados para controlar o acesso concorrente às baterias e a alteracao das caracteristicas dos robôs
     o mutex de cada bateria eh acessado com a chave "x,y" onde x e y são as coordenadas da bateria
     o mutex de cada robô eh acessado com a chave "id" onde id é o identificador do robô
     """
+    robot_dtype = np.dtype([
+        ('id', np.int32),
+        ('strength', np.int32),
+        ('energy', np.int32),
+        ('speed', np.int32),
+        ('pos', np.int32, (2,)),
+        ('status', np.int8)
+    ])
+    robos_array = np.ndarray((num_robots,), dtype=robot_dtype, buffer=robos_shm.buf)
     
     baterias_dict_mutex = manager.dict()
     robos_dict_mutex = manager.dict()
@@ -28,7 +37,7 @@ def inicializar_locks(manager, posicoes_baterias, robos_array):
         baterias_dict_mutex[key] = manager.Lock()
 
     for robo in robos_array:
-        key = str(robo.id)
+        key = str(robo["id"])
         robos_dict_mutex[key] = manager.Lock()
 
     return baterias_dict_mutex, robos_dict_mutex
