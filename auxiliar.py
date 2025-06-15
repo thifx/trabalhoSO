@@ -1,5 +1,6 @@
 import numpy as np
-from global_configs import tabuleiro_linhas, tabuleiro_colunas, robot_dtype,tabuleiro_dtype
+from global_configs import tabuleiro_linhas, tabuleiro_colunas, robot_dtype,tabuleiro_dtype,num_robots
+
 def spawn_valores_aleatorios(tabuleiro: np.ndarray, quantidade: int, valor: int):
     posicoes_geradas = []
     livres = np.argwhere(tabuleiro == 0)
@@ -13,7 +14,7 @@ def spawn_valores_aleatorios(tabuleiro: np.ndarray, quantidade: int, valor: int)
     
     return posicoes_geradas
 
-def inicializar_locks(manager, robos_shm,grid_shm,num_robots):
+def inicializar_locks(manager, robos_shm,grid_shm):
     """
     Os mutexes são usados para controlar o acesso concorrente às baterias e a alteracao das caracteristicas dos robôs
     o mutex de cada bateria eh acessado com a chave "x,y" onde x e y são as coordenadas da bateria
