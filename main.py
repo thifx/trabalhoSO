@@ -17,7 +17,7 @@ grid_mutex = Lock()
 robots_mutex = Lock()
 game_over_flag = Value('i', 0)
 
-def create_grid(num_robots=4):
+def create_grid(num_robots=2):
     grid_shm = shared_memory.SharedMemory(name="tabuleiro", create=True, size=tabuleiro.nbytes)
     tabuleiro_shm = np.ndarray(tabuleiro.shape, dtype=tabuleiro.dtype, buffer=grid_shm.buf)
     spawn_valores_aleatorios(tabuleiro, 80, 1) # Gera 80 barreiras 
@@ -27,7 +27,7 @@ def create_grid(num_robots=4):
     tabuleiro_shm[:] = tabuleiro[:]
     return grid_shm
 
-def spawn_robots(num_robots=4):
+def spawn_robots(num_robots=2):
     grid_shm = shared_memory.SharedMemory(name="tabuleiro")
     tabuleiro_shm = np.ndarray((linhas, colunas), dtype=tabuleiro.dtype, buffer=grid_shm.buf)
     robots_shm = shared_memory.SharedMemory(name="robots", create=True, size=robot_dtype.itemsize * num_robots)

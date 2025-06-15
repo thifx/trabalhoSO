@@ -5,6 +5,7 @@ import threading
 import numpy as np
 import time
 from global_configs import tabuleiro_dtype, robot_dtype, linhas, colunas
+from time import sleep
 
 class Robot:
     def __init__(self, idx, shm_name_robots, shm_name_grid, robots_mutex, grid_mutex, baterias_dict_mutex, game_over_flag):
@@ -19,7 +20,7 @@ class Robot:
         self.shm_robots = shared_memory.SharedMemory(name=shm_name_robots)
         self.shm_grid = shared_memory.SharedMemory(name=shm_name_grid)
 
-        self.robots = np.ndarray((4,), dtype=robot_dtype, buffer=self.shm_robots.buf)
+        self.robots = np.ndarray((2,), dtype=robot_dtype, buffer=self.shm_robots.buf)
         self.grid = np.ndarray((linhas, colunas), dtype=np.int8, buffer=self.shm_grid.buf)
 
     def __call__(self):
@@ -108,47 +109,46 @@ class Robot:
                         self.grid_mutex.release()
                 break
 
-    def move(self, pos_x, pos_y):
-        print(f"[MOVE] Robô {self.robot_id} tentando mover para ({pos_x}, {pos_y})")
+    def move(self, pos_y, pos_x):
         grid = np.ndarray((linhas, colunas), dtype=tabuleiro_dtype, buffer=self.shm_grid.buf)
 
         my_x, my_y = self.pos 
-        print(f"[MOVE] Robô {self.robot_id} posição atual: ({my_x}, {my_y})")
-        dx = pos_x - my_x
-        dy = pos_y - my_y
-        step_x = int(np.sign(dx))
-        step_y = int(np.sign(dy))
+        distancex = pos_x - my_x
+        distancey = pos_y - my_y
+        step_x = int(np.sign(distancex))
+        step_y = int(np.sign(distancey))
         new_x = my_x + step_x
         new_y = my_y + step_y
-
         target = self.valid_move(new_x, new_y, grid)
         if target is not None:
             try:
-                self.grid_mutex.acquire()
+                print(f"[MOVE] Robô {self.robot_id} tentando mover de ({my_y}, {my_x}) para ({new_x}, {new_y})")
                 grid[my_x, my_y] = 0
-                grid[new_x, new_y] = 99
-                print(f"[MOVE] Robô {self.robot_id} movendo de ({my_x}, {my_y}) para ({new_x}, {new_y})")
-                print(grid)
+                grid[new_x, new_y] = 10
+                print(f"[MOVE] Robô {self.robot_id} movido para ({new_x}, {new_y})")
+                print(step_x, step_y)
                 self.pos = (new_x, new_y)
+                sleep(3)
             except Exception as e:
                 print(f"[MOVE] Erro ao mover robô {self.robot_id}: {e}")
             finally:
-                self.grid_mutex.release()
-            if target == 2:
-                key = f"{new_x}{new_y}"
-                mutex = self.baterias_dict_mutex.get((key), None)
-                if mutex:
-                    mutex.acquire()
-                    try:
-                        self.collect_battery()
-                    finally:
-                        mutex.release()
-            elif target == 10 or target == 99:
-                try:
-                    self.robots_mutex.acquire()
-                    self.fight()
-                finally:
-                    self.robots_mutex.release()
+                # self.robots_mutex.release()
+                pass
+            # if target == 2:
+            #     key = f"{new_x}{new_y}"
+            #     mutex = self.baterias_dict_mutex.get((key), None)
+            #     if mutex:
+            #         mutex.acquire()
+            #         try:
+            #             self.collect_battery()
+            #         finally:
+            #             mutex.release()
+            # elif target == 10 or target == 99:
+            #     try:
+            #         self.robots_mutex.acquire()
+            #         self.fight()
+            #     finally:
+            #         self.robots_mutex.release()
 
 
     def valid_move(self, pos_x, pos_y, grid):
@@ -190,9 +190,7 @@ class Robot:
                     minor_b_dist = distance
                     battery_selected = (battery[0], battery[1])
             if self.energy < 80:
-                self.grid_mutex.acquire()
                 self.move(battery_selected[0], battery_selected[1])
-                self.grid_mutex.release()
         
             # else:
             #     self.grid_mutex.acquire()
