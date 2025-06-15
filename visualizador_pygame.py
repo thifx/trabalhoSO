@@ -1,5 +1,5 @@
 from multiprocessing import shared_memory
-from global_configs import logger
+from global_configs import *
 import pygame
 import numpy as np
 
@@ -33,7 +33,7 @@ def viewer(linhas, colunas, grid_shm, robots_shm,grid_mutex):
     rodando = True
     while rodando:
         tabuleiro_shm = np.ndarray((linhas, colunas), dtype=np.int8, buffer=grid_shm.buf)
-        robots = np.ndarray((4,), dtype=robot_dtype, buffer=robots_shm.buf)
+        robots = np.ndarray((num_robots,), dtype=robot_dtype, buffer=robots_shm.buf)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 rodando = False
