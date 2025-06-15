@@ -2,6 +2,7 @@ from multiprocessing import shared_memory
 import os
 import threading
 import numpy as np
+import time
 
 robot_dtype = np.dtype([
     ('id', np.int32),
@@ -12,11 +13,15 @@ robot_dtype = np.dtype([
     ('status', np.int8),
     ('type', np.int8)
 ])
+
 class Robot:
-    def __init__(self, idx, shm_name_robots, shm_name_grid, linhas, colunas):
+    def __init__(self, idx, shm_name_robots, shm_name_grid, linhas, colunas, robots_mutex, game_over_flag):
         self.idx = idx
         self.linhas = linhas
         self.colunas = colunas
+
+        self.game_over_flag = game_over_flag
+        self.robots_mutex = robots_mutex
 
         self.shm_robots = shared_memory.SharedMemory(name=shm_name_robots)
         self.shm_grid = shared_memory.SharedMemory(name=shm_name_grid)
@@ -51,6 +56,31 @@ class Robot:
     def sense_act(self):
         # Implementação do thread sense_act
         pass
+
     def housekeeping(self):
-        # Implementação do thread housekeeping
-        pass
+        while self.status != "morto" and self.game_over_flag.value == 0:
+            time.sleep(2)
+
+            self.robots_mutex.acquire()
+            try:
+                self.energy = max(0, self.energy - 1)
+                print(f"[HK] Robô {self.robot_id}: energia {self.energy}")
+
+                if self.energy == 0:
+                    self.status = "morto"
+                    print(f"[HK] Robô {self.robot_id} morreu por falta de energia")
+
+                self.robots[self.idx]['energy'] = self.energy
+                self.robots[self.idx]['status'] = 0 if self.status == "morto" else 1
+            finally:
+                self.robots_mutex.release()
+
+            self.robots_mutex.acquire()
+            try:
+                vivos = np.sum(self.robots['status'] == 1)
+                if vivos == 1:
+                    print(f"[HK] Robô {self.robot_id} detectou o fim do jogo.")
+                    self.game_over_flag.value = 1
+                    return
+            finally:
+                self.robots_mutex.release()
