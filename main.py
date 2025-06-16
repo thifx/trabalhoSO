@@ -69,7 +69,7 @@ if __name__ == "__main__":
     robots_shm = spawn_robots()
     try:
         logger.info("O jogo está inicialziando")
-        viewer(linhas, colunas, grid_shm, robots_shm, grid_mutex)
+        viewer(linhas, colunas, grid_shm, robots_shm, grid_mutex, game_over_flag)
     except KeyboardInterrupt:
         pass
     finally:

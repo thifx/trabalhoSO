@@ -24,7 +24,7 @@ robot_dtype = np.dtype([
         ('type', np.int8)
     ])
 
-def viewer(linhas, colunas, grid_shm, robots_shm,grid_mutex):
+def viewer(linhas, colunas, grid_shm, robots_shm,grid_mutex, game_over_flag):
     pygame.init()
     screen = pygame.display.set_mode((colunas * largura_bloco, linhas * altura_bloco))
     pygame.display.set_caption("Visualização do Tabuleiro")
@@ -37,8 +37,9 @@ def viewer(linhas, colunas, grid_shm, robots_shm,grid_mutex):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 rodando = False
-            player = [x for x in robots if x['type'] == 99][0]
-            if event.type == pygame.KEYDOWN:
+            idx = np.where(robots['type'] == 99)[0][0]
+            player = robots[idx]
+            if event.type == pygame.KEYDOWN and robots[idx]['status'] != 0 and game_over_flag.value == 0:
                 x, y = player['pos'][1], player['pos'][0]
                 novo_y, novo_x = y, x
                 if event.key == pygame.K_UP:
@@ -50,14 +51,30 @@ def viewer(linhas, colunas, grid_shm, robots_shm,grid_mutex):
                 elif event.key == pygame.K_RIGHT:
                     novo_x = min(colunas - 1, x + 1)
                 if tabuleiro_shm[novo_y, novo_x] != 1:
+                    valor_destino = tabuleiro_shm[novo_y, novo_x]
+                    status_array = robots['status']
+                    vivos = np.where(status_array == 1)[0]
+
                     #Logica  
                     with grid_mutex:    
                         tabuleiro_shm[y, x] = 0
                         tabuleiro_shm[novo_y, novo_x] = 99
                         player['pos'][0] = novo_y
                         player['pos'][1] = novo_x
-                        print(f"Moved to ({novo_x}, {novo_y})")
-            # Checa shm se flag game_over === True
+
+                    robots[idx]['energy'] = max(0, robots[idx]['energy'] - 1)
+                    if(valor_destino == 2):
+                        robots[idx]['energy'] = 100
+                        print(f'[PLAYER] Acessou um bloco de energia')
+                        
+                    if(robots[idx]['energy'] == 0):
+                        print('[PLAYER] morreu por falta de energia')
+                        robots[idx]['status'] = 0
+                        tabuleiro_shm[novo_y, novo_x] = 0
+
+                    if len(vivos) == 1 and vivos[0] == idx:
+                        print("[PLAYER] É o único vivo! VITÓRIA!")
+                        game_over_flag.value = 1
 
         screen.fill((200, 200, 200))
         for i in range(linhas):
