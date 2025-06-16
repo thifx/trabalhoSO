@@ -72,6 +72,40 @@ class Robot:
 
     def achar_melhor_proxima_posicao(self):
         enemy_pos = [tuple(pos) for pos in np.argwhere(self.grid == 10 ) if tuple(pos) != tuple(self.pos)]
+        battery_pos = [tuple(pos) for pos in np.argwhere(self.grid == 2 )]
+        
+        if self.robots[self.idx]['energy'] < 15 and battery_pos:
+            closest_battery = None
+            min_distance = float('inf')
+            my_pos = self.robots[self.idx]['pos']
+
+            for battery in battery_pos:
+                distance = self.distance(my_pos[0], my_pos[1], battery[0], battery[1])
+                if distance < min_distance:
+                    min_distance = distance
+                    closest_battery = battery
+
+            if closest_battery is not None:
+                pos_x, pos_y = closest_battery
+                my_x, my_y = my_pos
+                distancex = pos_x - my_x
+                distancey = pos_y - my_y
+
+                if abs(distancex) > 0:
+                    step_x = int(np.sign(distancex))
+                    new_x = my_x + step_x
+                    new_y = my_y
+                else:
+                    step_y = int(np.sign(distancey))
+                    new_x = my_x
+                    new_y = my_y + step_y
+
+                if self.valid_move(new_x, new_y) is None:
+                    choice = random.choice(self.movimentos)
+                    return (my_pos[0] + choice[0], my_pos[1] + choice[1])
+                else:
+                    return (new_x, new_y)
+                    
         for robot in self.robots:
             if robot['type'] == 99 and robot['status'] != 0:
                 enemy_pos.append(tuple(robot['pos'])) 
