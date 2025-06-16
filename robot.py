@@ -54,104 +54,20 @@ class Robot:
             # Escolhe um movimento aleatório
             pos_x_to_sum, pos_y_to_sum = random.choice(self.movimentos) 
             current_pos_x, current_pos_y = self.pos[0], self.pos[1]
+            nova_pos_x, nova_pos_y = current_pos_x + pos_x_to_sum, current_pos_y + pos_y_to_sum
             
-            if self.valid_move(current_pos_x + pos_x_to_sum, current_pos_y + pos_y_to_sum) is not None:
+            if self.valid_move(nova_pos_x, nova_pos_y) is not None:
                 with self.grid_mutex:
                     conteudo_celula_movimento = self.grid[current_pos_x + pos_x_to_sum, current_pos_y + pos_y_to_sum]
-                    nova_pos_x, nova_pos_y = current_pos_x + pos_x_to_sum, current_pos_y + pos_y_to_sum
-
+                    
                     if conteudo_celula_movimento == 0:# Espaço vazio
-                        self.grid[current_pos_x, current_pos_y] = 0
-                        self.grid[nova_pos_x, nova_pos_y] = 10
+                        self.mover_robo_celula_vazia((nova_pos_x, nova_pos_y))
 
-                        with self.robots_mutex:
-                            self.robots[self.idx]['pos'] = self.pos
-                            self.pos = (nova_pos_x, nova_pos_y)
                     elif conteudo_celula_movimento == 2:# Energia
-                        print(f"[SA] Robô {self.robot_id} encontrou uma bateria na posição ({nova_pos_x}, {nova_pos_y})")
-                        logger.info(f"Robô {self.robot_id} encontrou uma bateria na posição ({nova_pos_x}, {nova_pos_y})")
+                        self.coletar_bateria(nova_pos_x, nova_pos_y, current_pos_x, current_pos_y, logger)
 
-                        key = f"{nova_pos_x}{nova_pos_y}"
-                        print(f"[SA] Tentando pegar a bateria na posição com a chave do mutex ({nova_pos_x}, {nova_pos_y})")
-                        logger.info(f"Tentando pegar a bateria na posição com a chave do mutex ({nova_pos_x}, {nova_pos_y})")
-
-                        with self.baterias_dict_mutex.get(key):
-                            print(f"[SA] Robô {self.robot_id} pegou a bateria na posição ({nova_pos_x}, {nova_pos_y})")
-                            logger.info(f"Robô {self.robot_id} pegou a bateria na posição ({nova_pos_x}, {nova_pos_y})")
-                            with self.robots_mutex:
-                                energia_incrementada = self.energy + 20
-                                self.robots[self.idx]['energy'] = min(100, energia_incrementada)
-                                self.energy = self.robots[self.idx]['energy']
-
-                                print(f"[SA] Robô {self.robot_id} agora tem {self.energy} de energia")
-                                logger.info(f"Robô {self.robot_id} agora tem {self.energy} de energia")
-
-                                self.grid[current_pos_x, current_pos_y] = 0
-                                self.grid[nova_pos_x, nova_pos_y] = 10
-                                self.robots[self.idx]['pos'] = (nova_pos_x, nova_pos_y)
-                                self.pos = (nova_pos_x, nova_pos_y)
                     elif conteudo_celula_movimento == 10 or conteudo_celula_movimento==99: #Algum outro robô
-                        with self.robots_mutex:
-                            robo_inimigo = self.encontrar_robo_por_posicao((nova_pos_x, nova_pos_y))
-
-                            if robo_inimigo is None:
-                                print(f"[SA] Robô {self.robot_id} encontrou um robo inativo na posicao ({nova_pos_x}, {nova_pos_y})")
-                                logger.info(f"Robô {self.robot_id} encontrou um robo inativo na posicao ({nova_pos_x}, {nova_pos_y})")
-                                continue
-
-                            print(f"[SA] Robô {self.robot_id} encontrou o robô {robo_inimigo['id']} na posição ({nova_pos_x}, {nova_pos_y})")
-                            logger.info(f"Robô {self.robot_id} encontrou o robô {robo_inimigo['id']} na posição ({nova_pos_x}, {nova_pos_y})")
-
-                            poder_de_duelo = self.calcular_forca_duelo(self.strength, self.energy)
-                            poder_de_duelo_inimigo = self.calcular_forca_duelo(robo_inimigo['strength'], robo_inimigo['energy'])
-
-                            if(poder_de_duelo == poder_de_duelo_inimigo): #Empate
-                                print(f"[SA] Robô {self.robot_id} e robô {robo_inimigo['id']} empataram no duelo")
-                                logger.info(f"Robô {self.robot_id} e robô {robo_inimigo['id']} empataram no duelo")
-
-                                self.robots[self.idx]['energy'] = 0
-                                self.energy = 0
-                                self.robots[self.idx]['status'] = 0
-                                self.status = 0
-                                self.robots[self.idx]['pos'] = (-1, -1)
-                                self.pos = (-1, -1)
-
-                                robo_inimigo['energy'] = 0
-                                robo_inimigo['status'] = 0
-                                robo_inimigo['pos'] = (-1, -1)
-
-                                self.grid[current_pos_x, current_pos_y] = 0
-                                self.grid[nova_pos_x, nova_pos_y] = 0
-                                print(f"[SA] Robô {self.robot_id} e robô {robo_inimigo['id']} morreram no duelo")
-                                logger.info(f"Robô {self.robot_id} e robô {robo_inimigo['id']} morreram no duelo")
-                            elif(poder_de_duelo > poder_de_duelo_inimigo):# Vitória do robô atual
-                                print(f"[SA] Robô {self.robot_id} venceu o duelo contra o robô {robo_inimigo['id']}")
-                                logger.info(f"Robô {self.robot_id} venceu o duelo contra o robô {robo_inimigo['id']}")
-
-                                robo_inimigo['status'] = 0
-                                robo_inimigo['energy'] = 0
-                                robo_inimigo['pos'] = (-1, -1)
-
-                                self.grid[current_pos_x, current_pos_y] = 0
-                                self.grid[nova_pos_x, nova_pos_y] = 10
-                                self.robots[self.idx]['pos'] = (nova_pos_x, nova_pos_y)
-                                print(f"[SA] Robô {self.robot_id} agora está na posição ({nova_pos_x}, {nova_pos_y})")
-                                logger.info(f"Robô {self.robot_id} agora está na posição ({nova_pos_x}, {nova_pos_y})")
-                            else: # Vitória do robô inimigo
-                                print(f"[SA] Robô {self.robot_id} perdeu o duelo contra o robô {robo_inimigo['id']}")
-                                logger.info(f"Robô {self.robot_id} perdeu o duelo contra o robô {robo_inimigo['id']}")
-                                
-                                self.robots[self.idx]['energy'] = 0
-                                self.energy = 0
-                                self.robots[self.idx]['status'] = 0
-                                self.status = 0
-                                self.robots[self.idx]['pos'] = (-1, -1)
-                                self.pos = (-1, -1)
-
-                                self.grid[current_pos_x, current_pos_y] = 0
-
-                                print(f"[SA] Robô {self.robot_id} morreu na posição ({current_pos_x}, {current_pos_y})")
-                                logger.info(f"Robô {self.robot_id} morreu na posição ({current_pos_x}, {current_pos_y})")
+                        self.duelo(nova_pos_x, nova_pos_y, current_pos_x, current_pos_y, logger)
 
     def housekeeping(self):
         while self.robots[self.idx]['status'] != 0 and self.game_over_flag.value == 0:
@@ -206,3 +122,107 @@ class Robot:
     
     def calcular_forca_duelo(self,forca,energia):
         return 2 * forca + energia
+    
+    def mover_robo_celula_vazia(self, nova_pos):
+        current_x, current_y = self.pos
+        nova_x, nova_y = nova_pos
+
+        self.grid[current_x, current_y] = 0
+        self.grid[nova_x, nova_y] = 10
+
+        with self.robots_mutex:
+            self.robots[self.idx]['pos'] = nova_pos
+            self.pos = nova_pos
+
+    def coletar_bateria(self, nova_pos_x, nova_pos_y, current_pos_x, current_pos_y, logger):
+        print(f"[SA] Robô {self.robot_id} encontrou uma bateria na posição ({nova_pos_x}, {nova_pos_y})")
+        logger.info(f"Robô {self.robot_id} encontrou uma bateria na posição ({nova_pos_x}, {nova_pos_y})")
+
+        key = f"{nova_pos_x}{nova_pos_y}"
+        print(f"[SA] Tentando pegar a bateria na posição com a chave do mutex ({nova_pos_x}, {nova_pos_y})")
+        logger.info(f"Tentando pegar a bateria na posição com a chave do mutex ({nova_pos_x}, {nova_pos_y})")
+
+        with self.baterias_dict_mutex.get(key):
+            print(f"[SA] Robô {self.robot_id} pegou a bateria na posição ({nova_pos_x}, {nova_pos_y})")
+            logger.info(f"Robô {self.robot_id} pegou a bateria na posição ({nova_pos_x}, {nova_pos_y})")
+            with self.robots_mutex:
+                energia_incrementada = self.energy + 20
+                self.robots[self.idx]['energy'] = min(100, energia_incrementada)
+                self.energy = self.robots[self.idx]['energy']
+
+                print(f"[SA] Robô {self.robot_id} agora tem {self.energy} de energia")
+                logger.info(f"Robô {self.robot_id} agora tem {self.energy} de energia")
+
+                self.grid[current_pos_x, current_pos_y] = 0
+                self.grid[nova_pos_x, nova_pos_y] = 10
+                self.robots[self.idx]['pos'] = (nova_pos_x, nova_pos_y)
+                self.pos = (nova_pos_x, nova_pos_y)
+
+    def duelo(self, nova_pos_x, nova_pos_y, current_pos_x, current_pos_y, logger):
+        with self.robots_mutex:
+            robo_inimigo = self.encontrar_robo_por_posicao((nova_pos_x, nova_pos_y))
+
+            if robo_inimigo is None:
+                print(f"[SA] Robô {self.robot_id} encontrou um robo inativo na posicao ({nova_pos_x}, {nova_pos_y})")
+                logger.info(f"Robô {self.robot_id} encontrou um robo inativo na posicao ({nova_pos_x}, {nova_pos_y})")
+                return
+
+            print(f"[SA] Robô {self.robot_id} encontrou o robô {robo_inimigo['id']} na posição ({nova_pos_x}, {nova_pos_y})")
+            logger.info(f"Robô {self.robot_id} encontrou o robô {robo_inimigo['id']} na posição ({nova_pos_x}, {nova_pos_y})")
+
+            poder_de_duelo = self.calcular_forca_duelo(self.strength, self.energy)
+            poder_de_duelo_inimigo = self.calcular_forca_duelo(robo_inimigo['strength'], robo_inimigo['energy'])
+
+            #Empate
+            if poder_de_duelo == poder_de_duelo_inimigo:
+                print(f"[SA] Robô {self.robot_id} e robô {robo_inimigo['id']} empataram no duelo")
+                logger.info(f"Robô {self.robot_id} e robô {robo_inimigo['id']} empataram no duelo")
+
+                self.robots[self.idx]['energy'] = 0
+                self.energy = 0
+                self.robots[self.idx]['status'] = 0
+                self.status = 0
+                self.robots[self.idx]['pos'] = (-1, -1)
+                self.pos = (-1, -1)
+
+                robo_inimigo['energy'] = 0
+                robo_inimigo['status'] = 0
+                robo_inimigo['pos'] = (-1, -1)
+
+                self.grid[current_pos_x, current_pos_y] = 0
+                self.grid[nova_pos_x, nova_pos_y] = 0
+
+                print(f"[SA] Robô {self.robot_id} e robô {robo_inimigo['id']} morreram no duelo")
+                logger.info(f"Robô {self.robot_id} e robô {robo_inimigo['id']} morreram no duelo")
+            #Vitoria do desafiante
+            elif poder_de_duelo > poder_de_duelo_inimigo:
+                print(f"[SA] Robô {self.robot_id} venceu o duelo contra o robô {robo_inimigo['id']}")
+                logger.info(f"Robô {self.robot_id} venceu o duelo contra o robô {robo_inimigo['id']}")
+
+                robo_inimigo['status'] = 0
+                robo_inimigo['energy'] = 0
+                robo_inimigo['pos'] = (-1, -1)
+
+                self.grid[current_pos_x, current_pos_y] = 0
+                self.grid[nova_pos_x, nova_pos_y] = 10
+                self.robots[self.idx]['pos'] = (nova_pos_x, nova_pos_y)
+                self.pos = self.robots[self.idx]['pos']
+
+                print(f"[SA] Robô {self.robot_id} agora está na posição ({nova_pos_x}, {nova_pos_y})")
+                logger.info(f"Robô {self.robot_id} agora está na posição ({nova_pos_x}, {nova_pos_y})")
+            # Derrota do desafiante
+            else:
+                print(f"[SA] Robô {self.robot_id} perdeu o duelo contra o robô {robo_inimigo['id']}")
+                logger.info(f"Robô {self.robot_id} perdeu o duelo contra o robô {robo_inimigo['id']}")
+
+                self.robots[self.idx]['energy'] = 0
+                self.energy = 0
+                self.robots[self.idx]['status'] = 0
+                self.status = 0
+                self.robots[self.idx]['pos'] = (-1, -1)
+                self.pos = (-1, -1)
+
+                self.grid[current_pos_x, current_pos_y] = 0
+
+                print(f"[SA] Robô {self.robot_id} morreu na posição ({current_pos_x}, {current_pos_y})")
+                logger.info(f"Robô {self.robot_id} morreu na posição ({current_pos_x}, {current_pos_y})")
