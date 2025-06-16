@@ -5,6 +5,7 @@ import threading
 import numpy as np
 import time
 import random
+import math
 
 class Robot:
     def __init__(self, idx, shm_name_robots, shm_name_grid, robots_mutex,grid_mutex,baterias_dict_mutex, game_over_flag):
@@ -54,7 +55,7 @@ class Robot:
             # Escolhe um movimento aleatório
             pos_x_to_sum, pos_y_to_sum = random.choice(self.movimentos) 
             current_pos_x, current_pos_y = self.pos[0], self.pos[1]
-            nova_pos_x, nova_pos_y = current_pos_x + pos_x_to_sum, current_pos_y + pos_y_to_sum
+            nova_pos_x, nova_pos_y = self.achar_melhor_proxima_posicao()
             
             if self.valid_move(nova_pos_x, nova_pos_y) is not None:
                 with self.grid_mutex:
@@ -68,7 +69,39 @@ class Robot:
 
                     elif conteudo_celula_movimento == 10 or conteudo_celula_movimento==99: #Algum outro robô
                         self.duelo(nova_pos_x, nova_pos_y, current_pos_x, current_pos_y, logger)
+        
+    def achar_melhor_proxima_posicao(self):
+        enemy_pos = [tuple(pos) for pos in np.argwhere(self.grid == 10) if tuple(pos) != self.pos]
+        my_pos = self.pos
 
+        minor_e_dist = 1000000.0
+        enemy_selected = (0, 0)
+
+        for enemy in enemy_pos:
+            distance = self.distance(my_pos[0], my_pos[1], enemy[0], enemy[1])
+            if distance < minor_e_dist:
+                minor_e_dist = distance
+                enemy_selected = (enemy[0], enemy[1])
+    
+        #Escolher sempre o inimigo mais próximo
+        pos_x, pos_y = enemy_selected[0], enemy_selected[1]
+
+        my_x, my_y = self.pos 
+        distancex = pos_x - my_x
+        distancey = pos_y - my_y
+        step_x = int(np.sign(distancex))
+        step_y = int(np.sign(distancey))
+        new_x = my_x + step_x
+        new_y = my_y + step_y
+
+        if(self.valid_move(new_x, new_y) is None):
+            return random.choice(self.movimentos) 
+
+        return (new_x, new_y)
+
+    def distance(self, x1, y1, x2, y2):
+        return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+    
     def housekeeping(self):
         while self.robots[self.idx]['status'] != 0 and self.game_over_flag.value == 0:
             time.sleep(0.2)
@@ -141,6 +174,7 @@ class Robot:
         key = f"{nova_pos_x}{nova_pos_y}"
         print(f"[SA] Tentando pegar a bateria na posição com a chave do mutex ({nova_pos_x}, {nova_pos_y})")
         logger.info(f"Tentando pegar a bateria na posição com a chave do mutex ({nova_pos_x}, {nova_pos_y})")
+        print(f"Conteudo do dict: {self.baterias_dict_mutex.get(key)}")
 
         with self.baterias_dict_mutex.get(key):
             print(f"[SA] Robô {self.robot_id} pegou a bateria na posição ({nova_pos_x}, {nova_pos_y})")

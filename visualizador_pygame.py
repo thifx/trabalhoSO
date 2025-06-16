@@ -50,6 +50,7 @@ def viewer(linhas, colunas, grid_shm, robots_shm,grid_mutex):
                 elif event.key == pygame.K_RIGHT:
                     novo_x = min(colunas - 1, x + 1)
                 if tabuleiro_shm[novo_y, novo_x] != 1:
+                    #Logica  
                     with grid_mutex:    
                         tabuleiro_shm[y, x] = 0
                         tabuleiro_shm[novo_y, novo_x] = 99
