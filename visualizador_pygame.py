@@ -80,6 +80,12 @@ def viewer(linhas, colunas, grid_shm, robots_shm,grid_mutex, game_over_flag):
         for i in range(linhas):
             for j in range(colunas):
                 valor = tabuleiro_shm[i, j]
+                if valor==10 or valor==99:
+                    robots = np.ndarray((num_robots,), dtype=robot_dtype, buffer=robots_shm.buf)
+                    for robo in robots:
+                        if robo['pos'][0] == i and robo['pos'][1] == j and robo['status'] == 0:
+                            continue
+                            
                 cor = CORES.get(valor, (100, 100, 100)) 
                 pygame.draw.rect(screen, cor,
                     (j * largura_bloco, i * altura_bloco, largura_bloco, altura_bloco))
