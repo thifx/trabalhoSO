@@ -24,7 +24,7 @@ robot_dtype = np.dtype([
         ('type', np.int8)
     ])
 
-def viewer(linhas, colunas, grid_shm, robots_shm,grid_mutex, game_over_flag):
+def viewer(linhas, colunas, grid_shm, robots_shm,grid_mutex, game_over_flag,robots_mutex):
     pygame.init()
     screen = pygame.display.set_mode((colunas * largura_bloco, linhas * altura_bloco))
     pygame.display.set_caption("Visualização do Tabuleiro")
@@ -62,19 +62,52 @@ def viewer(linhas, colunas, grid_shm, robots_shm,grid_mutex, game_over_flag):
                         player['pos'][0] = novo_y
                         player['pos'][1] = novo_x
 
-                    robots[idx]['energy'] = max(0, robots[idx]['energy'] - 1)
-                    if(valor_destino == 2):
-                        robots[idx]['energy'] = 100
-                        print(f'[PLAYER] Acessou um bloco de energia')
+                        print(f'[PLAYER] Movimentou para o bloco ({novo_y}, {novo_x})')
+                        logger.info(f'[PLAYER] Movimentou para o bloco ({novo_y}, {novo_x})')
+                        robots[idx]['energy'] = max(0, robots[idx]['energy'] - 1)
+                        if(valor_destino == 2):
+                            robots[idx]['energy'] = 100
+                            print(f'[PLAYER] Acessou um bloco de energia')
+                            logger.info(f'[PLAYER] Acessou um bloco de energia')
                         
-                    if(robots[idx]['energy'] == 0):
-                        print('[PLAYER] morreu por falta de energia')
-                        robots[idx]['status'] = 0
-                        tabuleiro_shm[novo_y, novo_x] = 0
+                        if(valor_destino == 10):
+                            print(f'[PLAYER] Encontrou um robô comum no bloco ({novo_y}, {novo_x})')
+                            logger.info(f'[PLAYER] Encontrou um robô comum no bloco ({novo_y}, {novo_x})')
+                            with robots_mutex:
+                                robo_comum_idx = np.where(robots['pos'] == (novo_y, novo_x))[0]
+                                if robo_comum_idx.size > 0:
+                                    robo_comum_idx = robo_comum_idx[0]
+                                    robo_comum = robots[robo_comum_idx]
+                                    if robo_comum['status'] == 1:
+                                        minha_forca = 2 * robots[idx]['strength'] + robots[idx]['energy']
+                                        robo_inimigo_forca = 2 * robo_comum['strength'] + robo_comum['energy']
+                                        if robo_inimigo_forca < minha_forca:
+                                            print(f'[PLAYER] Derrotou o robô {robo_comum["id"]}')
+                                            robots[robo_comum_idx]['status'] = 0
+                                            robots[robo_comum_idx]['pos'] = (-1, -1)
+                                        elif robo_inimigo_forca > minha_forca:
+                                            print(f'[PLAYER] Foi derrotado pelo robô {robo_comum["id"]}')
+                                            robots[idx]['status'] = 0
+                                            robots[idx]['pos'] = (-1, -1)
+                                            tabuleiro_shm[novo_y, novo_x] = 10
+                                        else:
+                                            print(f'[PLAYER] Empate com o robô {robo_comum["id"]}')
+                                            robots[robo_comum_idx]['status'] = 0
+                                            robots[robo_comum_idx]['pos'] = (-1, -1)
+                                            tabuleiro_shm[novo_y, novo_x] = 0
+                                            robots[idx]['status'] = 0
+                                            robots[idx]['pos'] = (-1, -1)
+                            
+                        if(robots[idx]['energy'] == 0):
+                            print('[PLAYER] morreu por falta de energia')
+                            logger.info('[PLAYER] morreu por falta de energia')
+                            robots[idx]['status'] = 0
+                            tabuleiro_shm[novo_y, novo_x] = 0
 
-                    if len(vivos) == 1 and vivos[0] == idx:
-                        print("[PLAYER] É o único vivo! VITÓRIA!")
-                        game_over_flag.value = 1
+                        if len(vivos) == 1 and vivos[0] == idx:
+                            print("[PLAYER] É o único vivo! VITÓRIA!")
+                            logger.info("[PLAYER] É o único vivo! VITÓRIA!")
+                            game_over_flag.value = 1
 
         screen.fill((200, 200, 200))
         for i in range(linhas):
