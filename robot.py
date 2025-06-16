@@ -122,7 +122,7 @@ class Robot:
     
     def housekeeping(self):
         while self.robots[self.idx]['status'] != 0 and self.game_over_flag.value == 0:
-            time.sleep(0.2)
+            time.sleep(0.1)
 
             self.robots_mutex.acquire()
             try:
