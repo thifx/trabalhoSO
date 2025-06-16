@@ -1,4 +1,4 @@
-## 📁 Estrutura do Projeto
+## Estrutura do Projeto
 
 ```
 trabalhoSO-feat-feat/
@@ -13,7 +13,7 @@ trabalhoSO-feat-feat/
 └── README.md               
 ```
 
-### Rodando a aplicação
+## Rodando a aplicação
 
 1. Clonando o repositório
 ```bash
