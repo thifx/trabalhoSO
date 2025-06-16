@@ -27,7 +27,6 @@ class Robot:
         self.run()
     
     def run(self):
-        print(f"Robot {len(self.baterias_dict_mutex)} started in robot")
         robot = self.robots[self.idx]
         self.robot_id = os.getpid()
         self.strength = robot['strength']
@@ -52,32 +51,33 @@ class Robot:
     def sense_act(self):
         while self.robots[self.idx]['status'] != 0 and self.game_over_flag.value == 0:
             time.sleep(1 / self.speed)
+            with self.grid_mutex:
+                # Escolhe um movimento aleatório
+                pos_x_to_sum, pos_y_to_sum = random.choice(self.movimentos) 
+                current_pos_x, current_pos_y = self.pos[0], self.pos[1]
+                #nova_pos_x, nova_pos_y = self.achar_melhor_proxima_posicao()
+                nova_pos_x,nova_pos_y = current_pos_x + pos_x_to_sum,current_pos_y + pos_y_to_sum
+                
+                if self.valid_move(nova_pos_x, nova_pos_y) is not None:
+                        conteudo_celula_movimento = self.grid[current_pos_x + pos_x_to_sum, current_pos_y + pos_y_to_sum]
+                        
+                        if conteudo_celula_movimento == 0:# Espaço vazio
+                            self.mover_robo_celula_vazia((nova_pos_x, nova_pos_y))
 
-            # Escolhe um movimento aleatório
-            pos_x_to_sum, pos_y_to_sum = random.choice(self.movimentos) 
-            current_pos_x, current_pos_y = self.pos[0], self.pos[1]
-            nova_pos_x, nova_pos_y = self.achar_melhor_proxima_posicao()
-            #nova_pos_x,nova_pos_y = current_pos_x + pos_x_to_sum,current_pos_y + pos_y_to_sum
-            
-            if self.valid_move(nova_pos_x, nova_pos_y) is not None:
-                with self.grid_mutex:
-                    conteudo_celula_movimento = self.grid[current_pos_x + pos_x_to_sum, current_pos_y + pos_y_to_sum]
-                    
-                    if conteudo_celula_movimento == 0:# Espaço vazio
-                        self.mover_robo_celula_vazia((nova_pos_x, nova_pos_y))
+                        elif conteudo_celula_movimento == 2:# Energia
+                            self.coletar_bateria(nova_pos_x, nova_pos_y, current_pos_x, current_pos_y, logger)
 
-                    elif conteudo_celula_movimento == 2:# Energia
-                        self.coletar_bateria(nova_pos_x, nova_pos_y, current_pos_x, current_pos_y, logger)
-
-                    elif conteudo_celula_movimento == 10 or conteudo_celula_movimento==99: #Algum outro robô
-                        self.duelo(nova_pos_x, nova_pos_y, current_pos_x, current_pos_y, logger)
+                        elif conteudo_celula_movimento == 10 or conteudo_celula_movimento==99: #Algum outro robô
+                            #self.duelo(nova_pos_x, nova_pos_y, current_pos_x, current_pos_y, logger)
+                            pass
         
     def achar_melhor_proxima_posicao(self):
         enemy_pos = [tuple(pos) for pos in np.argwhere(self.grid == 10) if tuple(pos) != tuple(self.pos)]
-        my_pos = self.pos
+        my_pos = self.robots[self.idx]['pos']
 
         minor_e_dist = 1000000.0
-        enemy_selected = (0, 0)
+        #enemy_selected = (0, 0)
+        enemy_selected = enemy_pos[0]
 
         for enemy in enemy_pos:
             distance = self.distance(my_pos[0], my_pos[1], enemy[0], enemy[1])
@@ -88,7 +88,7 @@ class Robot:
         #Escolher sempre o inimigo mais próximo
         pos_x, pos_y = enemy_selected[0], enemy_selected[1]
 
-        my_x, my_y = self.pos 
+        my_x, my_y = self.robots[self.idx]['pos'] 
         distancex = pos_x - my_x
         distancey = pos_y - my_y
         step_x = int(np.sign(distancex))
@@ -166,6 +166,8 @@ class Robot:
         self.grid[nova_x, nova_y] = 10
 
         with self.robots_mutex:
+            print(f"[SA] Robô {self.robot_id} se moveu da posição ({current_x}, {current_y}) para ({nova_x}, {nova_y})")
+            logger.info(f"Robô {self.robot_id} se moveu da posição ({current_x}, {current_y}) para ({nova_x}, {nova_y})")
             self.robots[self.idx]['pos'] = nova_pos
             self.pos = nova_pos
 
@@ -174,9 +176,8 @@ class Robot:
         logger.info(f"Robô {self.robot_id} encontrou uma bateria na posição ({nova_pos_x}, {nova_pos_y})")
 
         key = f"{nova_pos_x}{nova_pos_y}"
-        print(f"[SA] Tentando pegar a bateria na posição com a chave do mutex ({nova_pos_x}, {nova_pos_y})")
-        logger.info(f"Tentando pegar a bateria na posição com a chave do mutex ({nova_pos_x}, {nova_pos_y})")
-        print(f"Conteudo do dict: {self.baterias_dict_mutex.get(key)}")
+        print(f"[SA] Tentando pegar a bateria na posição com a chave {key} no mutex ({nova_pos_x}, {nova_pos_y})")
+        logger.info(f"Tentando pegar a bateria na posição com a chave {key} do mutex ({nova_pos_x}, {nova_pos_y})")
 
         with self.baterias_dict_mutex.get(key):
             print(f"[SA] Robô {self.robot_id} pegou a bateria na posição ({nova_pos_x}, {nova_pos_y})")
