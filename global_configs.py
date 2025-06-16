@@ -14,7 +14,7 @@ if not logger.hasHandlers():
 
 #Global variables used in the game
 linhas, colunas = 40, 20
-num_robots = 4
+num_robots = 26
 tabuleiro_dtype = np.int8
 tabuleiro = np.zeros((linhas,colunas), dtype=tabuleiro_dtype)
 robot_dtype = np.dtype([

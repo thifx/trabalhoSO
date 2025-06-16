@@ -14,12 +14,14 @@ processos = []
 
 #Mutexes e variaveis compartilhadas
 manager = Manager()
-baterias_dict_mutex,robos_dict_mutex = manager.dict(), manager.dict()
+baterias_dict_mutex = manager.dict()
 grid_mutex = Lock()
 robots_mutex = Lock()
 game_over_flag = Value('i', 0)
 
 def create_grid(num_robots=num_robots):
+    global baterias_dict_mutex
+    
     grid_shm = shared_memory.SharedMemory(name="tabuleiro", create=True, size=tabuleiro.nbytes)
     tabuleiro_shm = np.ndarray(tabuleiro.shape, dtype=tabuleiro.dtype, buffer=grid_shm.buf)
     spawn_valores_aleatorios(tabuleiro, 80, 1) # Gera 80 barreiras 
@@ -27,6 +29,7 @@ def create_grid(num_robots=num_robots):
     spawn_valores_aleatorios(tabuleiro, num_robots - 1, 10) # Gera n - 1 robôs
     spawn_valores_aleatorios(tabuleiro, 1, 99) # Gera o robô principal
     tabuleiro_shm[:] = tabuleiro[:]
+    baterias_dict_mutex  = inicializar_locks(manager,grid_shm)
     return grid_shm
 
 def spawn_robots(num_robots=num_robots):
@@ -66,7 +69,6 @@ def spawn_robots(num_robots=num_robots):
 if __name__ == "__main__": 
     grid_shm = create_grid()
     robots_shm = spawn_robots()
-    baterias_dict_mutex  = inicializar_locks(manager,grid_shm)
     try:
         logger.info("O jogo está inicialziando")
         viewer(linhas, colunas, grid_shm, robots_shm, grid_mutex)
