@@ -5,6 +5,7 @@ import threading
 import numpy as np
 import time
 import random
+import math
 
 class Robot:
     def __init__(self, idx, shm_name_robots, shm_name_grid, robots_mutex,grid_mutex,baterias_dict_mutex, game_over_flag):
@@ -49,26 +50,76 @@ class Robot:
 
     def sense_act(self):
         while self.robots[self.idx]['status'] != 0 and self.game_over_flag.value == 0:
-            time.sleep(1 / self.speed)
+            time.sleep(1/self.speed)
+            with self.grid_mutex:
+                # Escolhe um movimento aleatório
+                #pos_x_to_sum, pos_y_to_sum = random.choice(self.movimentos) 
+                current_pos_x, current_pos_y = self.pos[0], self.pos[1]
+                nova_pos_x, nova_pos_y = self.achar_melhor_proxima_posicao()
+                #nova_pos_x,nova_pos_y = current_pos_x + pos_x_to_sum,current_pos_y + pos_y_to_sum
+                
+                if self.valid_move(nova_pos_x, nova_pos_y) is not None:
+                        conteudo_celula_movimento = self.grid[nova_pos_x, nova_pos_y]
+                        
+                        if conteudo_celula_movimento == 0:# Espaço vazio
+                            self.mover_robo_celula_vazia((nova_pos_x, nova_pos_y))
 
-            # Escolhe um movimento aleatório
-            pos_x_to_sum, pos_y_to_sum = random.choice(self.movimentos) 
-            current_pos_x, current_pos_y = self.pos[0], self.pos[1]
-            nova_pos_x, nova_pos_y = current_pos_x + pos_x_to_sum, current_pos_y + pos_y_to_sum
-            
-            if self.valid_move(nova_pos_x, nova_pos_y) is not None:
-                with self.grid_mutex:
-                    conteudo_celula_movimento = self.grid[current_pos_x + pos_x_to_sum, current_pos_y + pos_y_to_sum]
-                    
-                    if conteudo_celula_movimento == 0:# Espaço vazio
-                        self.mover_robo_celula_vazia((nova_pos_x, nova_pos_y))
+                        elif conteudo_celula_movimento == 2:# Energia
+                            self.coletar_bateria(nova_pos_x, nova_pos_y, current_pos_x, current_pos_y, logger)
 
-                    elif conteudo_celula_movimento == 2:# Energia
-                        self.coletar_bateria(nova_pos_x, nova_pos_y, current_pos_x, current_pos_y, logger)
+                        elif conteudo_celula_movimento == 10 or conteudo_celula_movimento==99: #Algum outro robô
+                            self.duelo(nova_pos_x, nova_pos_y, current_pos_x, current_pos_y, logger)
 
-                    elif conteudo_celula_movimento == 10 or conteudo_celula_movimento==99: #Algum outro robô
-                        self.duelo(nova_pos_x, nova_pos_y, current_pos_x, current_pos_y, logger)
+    def achar_melhor_proxima_posicao(self):
+        enemy_pos = [tuple(pos) for pos in np.argwhere(self.grid == 10 ) if tuple(pos) != tuple(self.pos)]
+        for robot in self.robots:
+            if robot['type'] == 99 and robot['status'] != 0:
+                enemy_pos.append(tuple(robot['pos'])) 
 
+        my_pos = self.robots[self.idx]['pos']
+
+        minor_e_dist = float('inf')
+        enemy_selected = None
+
+        for enemy in enemy_pos:
+            distance = self.distance(my_pos[0], my_pos[1], enemy[0], enemy[1])
+            if distance < minor_e_dist:
+                minor_e_dist = distance
+                enemy_selected = (enemy[0], enemy[1])
+
+        if enemy_selected is None:
+            choice = random.choice(self.movimentos)
+            return (my_pos[0] + choice[0], my_pos[1] + choice[1])
+
+        pos_x, pos_y = enemy_selected
+        my_x, my_y = my_pos
+        distancex = pos_x - my_x
+        distancey = pos_y - my_y
+
+        if abs(distancex) > 0:
+            step_x = int(np.sign(distancex))
+            new_x = my_x + step_x
+            new_y = my_y
+        else:
+            step_y = int(np.sign(distancey))
+            new_x = my_x
+            new_y = my_y + step_y
+
+        if (self.encontrar_robo_por_posicao((new_x, new_y)) is not None):
+            robo_inimigo = self.encontrar_robo_por_posicao((new_x, new_y))
+            if robo_inimigo['status'] == 0:
+                choice = random.choice(self.movimentos)
+                return (my_pos[0] + choice[0], my_pos[1] + choice[1])
+
+        if self.valid_move(new_x, new_y) is None:
+            choice = random.choice(self.movimentos)
+            return (my_pos[0] + choice[0], my_pos[1] + choice[1])
+
+        return (new_x, new_y)
+
+    def distance(self, x1, y1, x2, y2):
+        return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+    
     def housekeeping(self):
         while self.robots[self.idx]['status'] != 0 and self.game_over_flag.value == 0:
             time.sleep(0.2)
@@ -95,8 +146,8 @@ class Robot:
                 logger.info(f"Robô {self.robot_id}: energia {energia}, robôs vivos: {vivos}")
 
                 if vivos == 1 and self.robots[self.idx]['status'] == 1:
-                    print(f"[HK] Robô {self.robot_id} é o vencedor! Fim do jogo.")
-                    logger.info(f"Robô {self.robot_id}: energia {energia}, robôs vivos: {vivos}")
+                    print(f"[HK] VENCEDOR! Robô {self.robot_id} é o grande ganhador! Fim do jogo.")
+                    logger.info(f"[HK] VENCEDOR! Robô {self.robot_id} é o grande ganhador! Fim do jogo.")
                     self.game_over_flag.value = 1
                     return
                 
@@ -131,6 +182,8 @@ class Robot:
         self.grid[nova_x, nova_y] = 10
 
         with self.robots_mutex:
+            print(f"[SA] Robô {self.robot_id} se moveu da posição ({current_x}, {current_y}) para ({nova_x}, {nova_y})")
+            logger.info(f"Robô {self.robot_id} se moveu da posição ({current_x}, {current_y}) para ({nova_x}, {nova_y})")
             self.robots[self.idx]['pos'] = nova_pos
             self.pos = nova_pos
 
@@ -139,12 +192,18 @@ class Robot:
         logger.info(f"Robô {self.robot_id} encontrou uma bateria na posição ({nova_pos_x}, {nova_pos_y})")
 
         key = f"{nova_pos_x}{nova_pos_y}"
-        print(f"[SA] Tentando pegar a bateria na posição com a chave do mutex ({nova_pos_x}, {nova_pos_y})")
-        logger.info(f"Tentando pegar a bateria na posição com a chave do mutex ({nova_pos_x}, {nova_pos_y})")
+        print(f"[SA] Tentando pegar a bateria na posição com a chave {key} no mutex ({nova_pos_x}, {nova_pos_y})")
+        logger.info(f"Tentando pegar a bateria na posição com a chave {key} do mutex ({nova_pos_x}, {nova_pos_y})")
 
         with self.baterias_dict_mutex.get(key):
             print(f"[SA] Robô {self.robot_id} pegou a bateria na posição ({nova_pos_x}, {nova_pos_y})")
             logger.info(f"Robô {self.robot_id} pegou a bateria na posição ({nova_pos_x}, {nova_pos_y})")
+            
+            self.grid[current_pos_x, current_pos_y] = 0
+            self.grid[nova_pos_x, nova_pos_y] = 10
+            self.robots[self.idx]['pos'] = (nova_pos_x, nova_pos_y)
+            self.pos = (nova_pos_x, nova_pos_y)
+            
             with self.robots_mutex:
                 energia_incrementada = self.energy + 20
                 self.robots[self.idx]['energy'] = min(100, energia_incrementada)
@@ -152,11 +211,6 @@ class Robot:
 
                 print(f"[SA] Robô {self.robot_id} agora tem {self.energy} de energia")
                 logger.info(f"Robô {self.robot_id} agora tem {self.energy} de energia")
-
-                self.grid[current_pos_x, current_pos_y] = 0
-                self.grid[nova_pos_x, nova_pos_y] = 10
-                self.robots[self.idx]['pos'] = (nova_pos_x, nova_pos_y)
-                self.pos = (nova_pos_x, nova_pos_y)
 
     def duelo(self, nova_pos_x, nova_pos_y, current_pos_x, current_pos_y, logger):
         with self.robots_mutex:

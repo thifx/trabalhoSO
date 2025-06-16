@@ -1,6 +1,4 @@
-from multiprocessing import shared_memory, Process, Value
-from multiprocessing import shared_memory, Process, Manager
-from multiprocessing import Lock, shared_memory
+from multiprocessing import shared_memory, Process, Value, Manager,Lock
 from auxiliar import spawn_valores_aleatorios,inicializar_locks
 from global_configs import *
 from visualizador_pygame import viewer
