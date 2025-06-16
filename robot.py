@@ -146,8 +146,8 @@ class Robot:
                 logger.info(f"Robô {self.robot_id}: energia {energia}, robôs vivos: {vivos}")
 
                 if vivos == 1 and self.robots[self.idx]['status'] == 1:
-                    print(f"[HK] Robô {self.robot_id} é o vencedor! Fim do jogo.")
-                    logger.info(f"Robô {self.robot_id}: energia {energia}, robôs vivos: {vivos}")
+                    print(f"[HK] VENCEDOR! Robô {self.robot_id} é o grande ganhador! Fim do jogo.")
+                    logger.info(f"[HK] VENCEDOR! Robô {self.robot_id} é o grande ganhador! Fim do jogo.")
                     self.game_over_flag.value = 1
                     return
                 
