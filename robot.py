@@ -27,6 +27,7 @@ class Robot:
         self.run()
     
     def run(self):
+        print(f"Robot {len(self.baterias_dict_mutex)} started in robot")
         robot = self.robots[self.idx]
         self.robot_id = os.getpid()
         self.strength = robot['strength']
@@ -56,6 +57,7 @@ class Robot:
             pos_x_to_sum, pos_y_to_sum = random.choice(self.movimentos) 
             current_pos_x, current_pos_y = self.pos[0], self.pos[1]
             nova_pos_x, nova_pos_y = self.achar_melhor_proxima_posicao()
+            #nova_pos_x,nova_pos_y = current_pos_x + pos_x_to_sum,current_pos_y + pos_y_to_sum
             
             if self.valid_move(nova_pos_x, nova_pos_y) is not None:
                 with self.grid_mutex:
@@ -71,7 +73,7 @@ class Robot:
                         self.duelo(nova_pos_x, nova_pos_y, current_pos_x, current_pos_y, logger)
         
     def achar_melhor_proxima_posicao(self):
-        enemy_pos = [tuple(pos) for pos in np.argwhere(self.grid == 10) if tuple(pos) != self.pos]
+        enemy_pos = [tuple(pos) for pos in np.argwhere(self.grid == 10) if tuple(pos) != tuple(self.pos)]
         my_pos = self.pos
 
         minor_e_dist = 1000000.0

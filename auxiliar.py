@@ -27,4 +27,6 @@ def inicializar_locks(manager,grid_shm):
         key = f"{posicao_bateria[0]}{posicao_bateria[1]}"
         baterias_dict_mutex[key] = manager.Lock()
 
+    print(len(baterias_dict_mutex), "baterias inicializadas com mutexes.")
+
     return baterias_dict_mutex
