@@ -68,16 +68,14 @@ class Robot:
                             self.coletar_bateria(nova_pos_x, nova_pos_y, current_pos_x, current_pos_y, logger)
 
                         elif conteudo_celula_movimento == 10 or conteudo_celula_movimento==99: #Algum outro robô
-                            #self.duelo(nova_pos_x, nova_pos_y, current_pos_x, current_pos_y, logger)
-                            pass
+                            self.duelo(nova_pos_x, nova_pos_y, current_pos_x, current_pos_y, logger)
         
     def achar_melhor_proxima_posicao(self):
         enemy_pos = [tuple(pos) for pos in np.argwhere(self.grid == 10) if tuple(pos) != tuple(self.pos)]
         my_pos = self.robots[self.idx]['pos']
 
         minor_e_dist = 1000000.0
-        #enemy_selected = (0, 0)
-        enemy_selected = enemy_pos[0]
+        enemy_selected = (0, 0)
 
         for enemy in enemy_pos:
             distance = self.distance(my_pos[0], my_pos[1], enemy[0], enemy[1])
