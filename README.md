@@ -32,9 +32,3 @@ pip3 install -r requirements.txt
 ```bash
 python3 main.py
 ```
-
----
-
-## 📃 Licença
-
-Uso educacional apenas.
